@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mynetwork
+
+  redis:
+    image: redis:alpine
+    networks:
+      - mynetwork
+
+  web:
+    build: .
+    command: sh -c "python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_SETTINGS_MODULE: notification_service.settings
+      DEBUG: "1"
+    depends_on:
+      - db
+      - redis
+    networks:
+      - mynetwork
+
+  celery:
+    build: .
+    command: celery -A notification_service worker --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      DJANGO_SETTINGS_MODULE: notification_service.settings
+    depends_on:
+      - db
+      - redis
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:
+
+volumes:
+  postgres_data:
